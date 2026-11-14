@@ -12,6 +12,8 @@ namespace SuperBot.Core
         public static event Action<string> OnCheckpointReached;
         public static event Action<float> OnPlayerLanded;
         public static event Action<int, int> OnPlayerHealthChanged;
+        public static event Action<string> OnLevelCompleted;
+        public static event Action<bool> OnGamePaused;
 
         [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
@@ -23,6 +25,8 @@ namespace SuperBot.Core
             OnCheckpointReached = null;
             OnPlayerLanded = null;
             OnPlayerHealthChanged = null;
+            OnLevelCompleted = null;
+            OnGamePaused = null;
         }
 
         public static void RaiseBoltsChanged(int total) => OnBoltsChanged?.Invoke(total);
@@ -32,5 +36,7 @@ namespace SuperBot.Core
         public static void RaiseCheckpointReached(string checkpointId) => OnCheckpointReached?.Invoke(checkpointId);
         public static void RaisePlayerLanded(float impactSpeed) => OnPlayerLanded?.Invoke(impactSpeed);
         public static void RaisePlayerHealthChanged(int current, int max) => OnPlayerHealthChanged?.Invoke(current, max);
+        public static void RaiseLevelCompleted(string levelId) => OnLevelCompleted?.Invoke(levelId);
+        public static void RaiseGamePaused(bool paused) => OnGamePaused?.Invoke(paused);
     }
 }

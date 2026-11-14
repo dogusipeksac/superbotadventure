@@ -13,7 +13,11 @@ namespace SuperBot.EditorTools
         private const string MenuPath = "SuperBot/Play From First Build Scene";
         private const string PrefKey = "SuperBot.PlayFromFirstScene";
 
-        static PlayModeStartScene() => EditorApplication.delayCall += Apply;
+        static PlayModeStartScene()
+        {
+            EditorApplication.delayCall += Apply;
+            EditorBuildSettings.sceneListChanged += Apply;
+        }
 
         private static bool Enabled
         {
@@ -39,7 +43,7 @@ namespace SuperBot.EditorTools
         private static void OpenTestScene()
         {
             if (EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
-                EditorSceneManager.OpenScene("Assets/_Game/Scenes/TestIsland.unity");
+                EditorSceneManager.OpenScene("Assets/_Game/Scenes/Island01.unity");
         }
 
         private static void Apply()

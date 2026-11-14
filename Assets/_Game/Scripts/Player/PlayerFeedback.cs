@@ -1,3 +1,4 @@
+using SuperBot.Audio;
 using SuperBot.Core;
 using UnityEngine;
 
@@ -28,15 +29,28 @@ namespace SuperBot.Player
         {
             GameEvents.OnPlayerLanded += HandleLanded;
             motor.Jumped += HandleJumped;
-            motor.DoubleJumped += HandleJumped;
+            motor.DoubleJumped += HandleDoubleJumped;
+            motor.Dashed += HandleDashed;
+            motor.SpinStarted += HandleSpin;
         }
 
         private void OnDisable()
         {
             GameEvents.OnPlayerLanded -= HandleLanded;
             motor.Jumped -= HandleJumped;
-            motor.DoubleJumped -= HandleJumped;
+            motor.DoubleJumped -= HandleDoubleJumped;
+            motor.Dashed -= HandleDashed;
+            motor.SpinStarted -= HandleSpin;
         }
+
+        private void HandleDoubleJumped()
+        {
+            HandleJumped();
+            AudioService.Play(SfxId.DoubleJump);
+        }
+
+        private void HandleDashed() => AudioService.Play(SfxId.Dash);
+        private void HandleSpin() => AudioService.Play(SfxId.Spin);
 
         private void HandleLanded(float impactSpeed)
         {
@@ -46,6 +60,7 @@ namespace SuperBot.Player
             Play(new Vector3(1f + amount * 0.5f, 1f - amount, 1f + amount * 0.5f), cfg.landSquashTime);
 
             if (dustPrefab != null) PoolManager.SpawnStatic(dustPrefab, transform.position, Quaternion.identity);
+            AudioService.Play(SfxId.Land);
 
             if (ServiceLocator.TryGet(out HapticManager haptics))
             {
@@ -56,6 +71,7 @@ namespace SuperBot.Player
 
         private void HandleJumped()
         {
+            if (motor.JumpCount <= 1) AudioService.Play(SfxId.Jump);
             Play(new Vector3(1f - jumpStretch * 0.5f, 1f + jumpStretch, 1f - jumpStretch * 0.5f), 0.18f);
             if (dustPrefab != null && motor.IsGrounded) PoolManager.SpawnStatic(dustPrefab, transform.position, Quaternion.identity);
         }

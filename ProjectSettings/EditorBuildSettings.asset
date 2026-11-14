@@ -6,11 +6,17 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/_Game/Scenes/TestIsland.unity
-    guid: ed462b41e3c1c4acb9cee61c398f5de5
+    path: Assets/_Game/Scenes/Boot.unity
+    guid: 15b5c3287846d410ea1b4a4098f569f9
   - enabled: 1
-    path: Assets/Scenes/SampleScene.unity
-    guid: 99c9720ab356a0642a771bea13969a05
+    path: Assets/_Game/Scenes/MainMenu.unity
+    guid: 16be8eaa9751a44e092ac2248af1eb3f
+  - enabled: 1
+    path: Assets/_Game/Scenes/Hub.unity
+    guid: 47cee148ae98d4672b73f8b17fec15f5
+  - enabled: 1
+    path: Assets/_Game/Scenes/Island01.unity
+    guid: 4e84c693485d14d6fbd57e402fb09a83
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   m_UseUCBPForAssetBundles: 0

@@ -24,7 +24,7 @@ namespace SuperBot.EditorTools
     /// test scene. Every step is idempotent: re-running updates assets in place (GUIDs are kept).
     /// Requires the glTFast package so the .glb files import as models.
     /// </summary>
-    public static class SuperBotSetupMenu
+    public static partial class SuperBotSetupMenu
     {
         private const string Root = "Assets/_Game";
         private const string ArtRoot = Root + "/Art";
@@ -67,7 +67,8 @@ namespace SuperBot.EditorTools
             CreateConfigAssets();
             CreateMaterials();
             BuildPrefabs();
-            BuildTestScene();
+            CreateDefaultCosmetics();
+            BuildAllScenes();
         }
 
         [MenuItem("SuperBot/0. Configure Player Settings (Landscape)", priority = 20)]
@@ -266,7 +267,7 @@ namespace SuperBot.EditorTools
                 cc.height = 1.4f;
                 cc.radius = 0.35f;
                 cc.center = new Vector3(0f, 0.72f, 0f);
-                cc.skinWidth = 0.05f;
+                cc.skinWidth = 0.02f;
                 cc.stepOffset = 0.3f;
                 cc.slopeLimit = 50f;
 
@@ -275,6 +276,19 @@ namespace SuperBot.EditorTools
                 var model = CreateModel(RobotModel, visualRoot, 1.45f, SizeMode.Height, lit, false);
                 SetLayerRecursive(visualRoot.gameObject, LayerPlayer);
                 AttachLegacyClips(model.gameObject);
+                GroundRobotModel(model);
+
+                var trailGo = new GameObject("Trail");
+                trailGo.transform.SetParent(root.transform, false);
+                trailGo.transform.localPosition = new Vector3(0f, 0.8f, -0.25f);
+                var trail = trailGo.AddComponent<TrailRenderer>();
+                trail.time = 0.3f;
+                trail.minVertexDistance = 0.1f;
+                trail.widthCurve = AnimationCurve.Linear(0f, 0.3f, 1f, 0f);
+                trail.shadowCastingMode = ShadowCastingMode.Off;
+                trail.receiveShadows = false;
+                trail.emitting = false;
+                if (particleMat != null) trail.sharedMaterial = particleMat;
 
                 var hover = BuildLoop("JetpackFx", new Color(0.4f, 0.9f, 1f), particleMat);
                 hover.transform.SetParent(root.transform, false);
@@ -292,341 +306,14 @@ namespace SuperBot.EditorTools
                 Set(feedback, "hoverParticles", hover.GetComponent<ParticleSystem>());
                 var anim = root.AddComponent<PlayerAnimator>();
                 Set(anim, "spinVisual", model);
+                var cosmetics = root.AddComponent<PlayerCosmetics>();
+                Set(cosmetics, "modelRoot", model);
+                Set(cosmetics, "trail", trail);
                 SavePrefab(root, "Player");
             }
 
             AssetDatabase.SaveAssets();
             Debug.Log("[SuperBot] Prefabs built in " + PrefabDir);
-        }
-
-        [MenuItem("SuperBot/4. Build Test Scene", priority = 24)]
-        public static void BuildTestScene()
-        {
-            if (!CheckModelsImported()) return;
-            if (LoadPrefab<PlayerMotor>("Player") == null) BuildPrefabs();
-            if (LoadPrefab<PlayerMotor>("Player") == null) return;
-            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
-
-            EnsureFolder(SceneDir);
-            Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            var lit = AssetDatabase.LoadAssetAtPath<Material>(MatVertexLit);
-            var rng = new System.Random(42);
-
-            // ---- Lighting / atmosphere ----
-            var sun = new GameObject("Sun").AddComponent<Light>();
-            sun.type = LightType.Directional;
-            sun.color = new Color(1f, 0.96f, 0.86f);
-            sun.intensity = 1.25f;
-            sun.shadows = LightShadows.Soft;
-            sun.transform.rotation = Quaternion.Euler(50f, -35f, 0f);
-            RenderSettings.sun = sun;
-            RenderSettings.skybox = null;
-            RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.62f, 0.75f, 0.95f);
-            RenderSettings.ambientEquatorColor = new Color(0.55f, 0.6f, 0.6f);
-            RenderSettings.ambientGroundColor = new Color(0.3f, 0.28f, 0.25f);
-            RenderSettings.fog = true;
-            RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = new Color(0.62f, 0.8f, 0.97f);
-            RenderSettings.fogStartDistance = 45f;
-            RenderSettings.fogEndDistance = 140f;
-
-            // ---- Systems ----
-            var systems = new GameObject("[Systems]");
-            systems.AddComponent<Bootstrapper>();
-            new GameObject("[Input]").AddComponent<MobileInputRouter>();
-            var respawnGo = new GameObject("[Respawn]");
-            var respawn = respawnGo.AddComponent<RespawnService>();
-            var spawnPoint = new GameObject("DefaultSpawn").transform;
-            spawnPoint.SetParent(respawnGo.transform, false);
-
-            // ---- Islands ----
-            var world = new GameObject("World").transform;
-            var islands = Child(world, "Islands");
-            var mainIsland = new[]
-            {
-                new Vector3(-8.5f, 0, -8.5f), new Vector3(0, 0, -8.5f), new Vector3(8.5f, 0, -8.5f),
-                new Vector3(-8.5f, 0, 0), new Vector3(0, 0, 0), new Vector3(8.5f, 0, 0),
-                new Vector3(-8.5f, 0, 8.5f), new Vector3(0, 0, 8.5f), new Vector3(8.5f, 0, 8.5f),
-            };
-            foreach (var p in mainIsland) PlaceGround(GrassBlob, islands, p, rng.Next(0, 4) * 90f, 1f, lit);
-            var secondIsland = new[] { new Vector3(-4.5f, 0, 30f), new Vector3(4.5f, 0, 30f), new Vector3(0, 0, 38f) };
-            foreach (var p in secondIsland) PlaceGround(GrassBlob, islands, p, rng.Next(0, 4) * 90f, 1f, lit);
-            PlaceGround(GrassBlob, islands, new Vector3(31f, 0f, 0f), 0f, 0.6f, lit);       // moving-platform island
-            PlaceGround(GrassBlob, islands, new Vector3(-8f, 4.3f, 15.5f), 0f, 0.45f, lit);  // high ledge (jump pad)
-
-            for (int i = 0; i < 3; i++) // bridge to island 2
-                PlaceGround(BridgeModel, islands, new Vector3(0f, 0.05f, 15f + i * 4.4f), 90f, 1.1f, lit);
-
-            Physics.SyncTransforms();
-
-            // ---- Nature dressing ----
-            var nature = Child(world, "Nature");
-            string[] natureModels =
-            {
-                "broadleaf-oak-997c22", "tall-pine-tree-ab4108", "young-pine-0d7695", "round-bush-cd2ac0",
-                "medium-rock-e08405", "large-boulder-a29b99", "small-rock-db33a7", "toadstool-257a4a",
-                "grass-tuft-a40a08", "wildflower-68d3a1", "fallen-log-1685fb", "tree-stump-ec3f48",
-            };
-            Vector3[] naturePositions =
-            {
-                new Vector3(-11, 0, -11), new Vector3(11, 0, -11), new Vector3(-12, 0, 2), new Vector3(12, 0, 7),
-                new Vector3(-3, 0, -12), new Vector3(10, 0, 11), new Vector3(-11, 0, 11), new Vector3(4, 0, -11),
-                new Vector3(-5, 0, 5), new Vector3(6, 0, -3), new Vector3(-9, 0, -4), new Vector3(3, 0, 11),
-                new Vector3(-6, 0, 33), new Vector3(6, 0, 35), new Vector3(-2, 0, 41), new Vector3(4, 0, 27),
-            };
-            for (int i = 0; i < naturePositions.Length; i++)
-            {
-                string path = $"{NatureDir}/{natureModels[i % natureModels.Length]}.glb";
-                var model = InstantiateModelAsset(path, nature);
-                if (model == null) continue;
-                ApplyMaterial(model, lit);
-                model.transform.rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f);
-                model.transform.position = OnGround(naturePositions[i], 0f);
-                if (i % natureModels.Length < 6) AddMeshColliders(model); // trees + rocks block the camera/player
-                GameObjectUtility.SetStaticEditorFlags(model, StaticEditorFlags.BatchingStatic);
-            }
-            Physics.SyncTransforms();
-
-            // ---- Gameplay objects ----
-            var gameplay = Child(world, "Gameplay");
-
-            var player = (GameObject)PrefabUtility.InstantiatePrefab(LoadPrefabGo("Player"));
-            player.transform.position = OnGround(new Vector3(0f, 0f, -6f), 0.1f);
-            spawnPoint.position = player.transform.position;
-
-            var cp1 = Spawn("Checkpoint", gameplay, OnGround(new Vector3(2.5f, 0, -9f), 0f));
-            Set(cp1.GetComponent<Checkpoint>(), "checkpointId", "testisland_cp_start");
-            var cp2 = Spawn("Checkpoint", gameplay, OnGround(new Vector3(3.5f, 0, 28f), 0f));
-            Set(cp2.GetComponent<Checkpoint>(), "checkpointId", "testisland_cp_island2");
-
-            int boltIndex = 0;
-            var bolts = Child(gameplay, "Bolts");
-            for (int i = 0; i < 6; i++) SpawnBolt(bolts, new Vector3(0f, 0, -3f + i * 2f), ref boltIndex);
-            for (int i = 0; i < 8; i++)
-            {
-                float a = i / 8f * Mathf.PI * 2f;
-                SpawnBolt(bolts, new Vector3(6f + Mathf.Cos(a) * 2.5f, 0, 5f + Mathf.Sin(a) * 2.5f), ref boltIndex);
-            }
-            for (int i = 0; i < 5; i++) SpawnBolt(bolts, new Vector3(0f, 0, 14f + i * 2.5f), ref boltIndex);
-            for (int i = 0; i < 4; i++) SpawnBolt(bolts, new Vector3(-3f + i * 2f, 0, 34f), ref boltIndex);
-
-            Vector3[] cratePositions = { new Vector3(-6, 0, -2), new Vector3(-7.2f, 0, -0.8f), new Vector3(-5, 0, 2.5f), new Vector3(8, 0, -6) };
-            foreach (var p in cratePositions)
-                Spawn("Crate", gameplay, OnGround(p, 0f)).transform.rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 90f, 0f);
-
-            Spawn("JumpPad", gameplay, OnGround(new Vector3(-8f, 0, 9f), 0f));
-
-            var platform = Spawn("MovingPlatform", gameplay, new Vector3(15.5f, 0f, 0f));
-            SetVectorList(platform.GetComponent<MovingPlatform>(), "waypointOffsets",
-                new[] { Vector3.zero, new Vector3(10f, 0f, 0f) });
-
-            var enemy = Spawn("Enemy_Beetle", gameplay, OnGround(new Vector3(5f, 0, -1f), 0f));
-            SetVectorArray(enemy.GetComponent<PatrolEnemy>(), "waypointOffsets",
-                new[] { new Vector3(-3f, 0f, 0f), new Vector3(3f, 0f, 0f) });
-
-            var cores = Child(gameplay, "GoldenCores");
-            SpawnCore(cores, "testisland_core_ledge", OnGround(new Vector3(-8f, 10f, 15.5f), 1.2f));
-            SpawnCore(cores, "testisland_core_island2", OnGround(new Vector3(0f, 0f, 41f), 1.2f));
-            SpawnCore(cores, "testisland_core_platform", OnGround(new Vector3(31f, 0f, 0f), 1.2f));
-
-            var kill = new GameObject("KillZone");
-            kill.transform.SetParent(world, false);
-            kill.transform.position = new Vector3(0f, -15f, 0f);
-            var killCol = kill.AddComponent<BoxCollider>();
-            killCol.isTrigger = true;
-            killCol.size = new Vector3(400f, 2f, 400f);
-            kill.AddComponent<KillZone>();
-
-            // ---- Camera ----
-            var camGo = new GameObject("Main Camera");
-            camGo.tag = "MainCamera";
-            var cam = camGo.AddComponent<Camera>();
-            cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = RenderSettings.fogColor;
-            cam.nearClipPlane = 0.1f;
-            cam.farClipPlane = 160f;
-            cam.fieldOfView = 55f;
-            camGo.AddComponent<AudioListener>();
-            var tpc = camGo.AddComponent<ThirdPersonCamera>();
-            Set(tpc, "target", player.transform);
-            Set(tpc, "targetMotor", player.GetComponent<PlayerMotor>());
-            Set(tpc, "collisionMask", LayerMask.GetMask("Default", LayerGround));
-            camGo.transform.position = player.transform.position + new Vector3(0f, 3f, -6f);
-            camGo.transform.LookAt(player.transform.position + Vector3.up);
-            Set(player.GetComponent<PlayerMotor>(), "cameraTransform", camGo.transform);
-
-            Set(respawn, "defaultSpawn", spawnPoint);
-            Set(respawn, "player", player.GetComponent<PlayerHealth>());
-
-            // ---- UI ----
-            BuildUi();
-
-            EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene, ScenePath);
-            AddSceneToBuildSettings(ScenePath);
-            Debug.Log($"[SuperBot] Test scene saved: {ScenePath}");
-        }
-
-        [MenuItem("SuperBot/Delete Save File", priority = 60)]
-        public static void DeleteSave()
-        {
-            new SaveService().DeleteAll();
-            Debug.Log("[SuperBot] Save deleted: " + Application.persistentDataPath);
-        }
-
-        // ------------------------------------------------------------------ UI
-
-        private static void BuildUi()
-        {
-            Sprite circle = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
-            Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-
-            var canvasGo = new GameObject("Canvas", typeof(RectTransform));
-            canvasGo.layer = LayerMask.NameToLayer("UI");
-            var canvas = canvasGo.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            var scaler = canvasGo.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
-            scaler.matchWidthOrHeight = 0.5f;
-            canvasGo.AddComponent<GraphicRaycaster>();
-
-            var safe = UiRect("SafeArea", canvasGo.transform, Vector2.zero, Vector2.one);
-            safe.gameObject.AddComponent<SafeAreaFitter>();
-
-            // Look zone first so it sits behind the buttons.
-            var look = UiRect("LookZone", safe, new Vector2(0.4f, 0f), new Vector2(1f, 1f));
-            TransparentImage(look);
-            look.gameObject.AddComponent<LookTouchZone>();
-
-            // Joystick
-            var joyZone = UiRect("JoystickZone", safe, new Vector2(0f, 0f), new Vector2(0.4f, 0.78f));
-            TransparentImage(joyZone);
-            var joyBg = UiRect("Background", joyZone, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f));
-            joyBg.sizeDelta = new Vector2(220f, 220f);
-            joyBg.anchoredPosition = new Vector2(-150f, -170f);
-            var bgImg = joyBg.gameObject.AddComponent<Image>();
-            bgImg.sprite = circle;
-            bgImg.color = new Color(1f, 1f, 1f, 0.25f);
-            bgImg.raycastTarget = false;
-            var knob = UiRect("Knob", joyBg, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f));
-            knob.sizeDelta = new Vector2(100f, 100f);
-            var knobImg = knob.gameObject.AddComponent<Image>();
-            knobImg.sprite = circle;
-            knobImg.color = new Color(1f, 1f, 1f, 0.7f);
-            knobImg.raycastTarget = false;
-            var joystick = joyZone.gameObject.AddComponent<VirtualJoystick>();
-            Set(joystick, "background", joyBg);
-            Set(joystick, "knob", knob);
-
-            // Buttons (bottom-right)
-            UiButton("JumpButton", safe, ButtonAction.Jump, "JUMP", new Vector2(-180f, 180f), 210f, new Color(0.3f, 0.85f, 1f, 0.8f), circle, font);
-            UiButton("SpinButton", safe, ButtonAction.Attack, "SPIN", new Vector2(-420f, 130f), 150f, new Color(1f, 0.55f, 0.25f, 0.8f), circle, font);
-            UiButton("DashButton", safe, ButtonAction.Dash, "DASH", new Vector2(-250f, 400f), 140f, new Color(0.7f, 0.5f, 1f, 0.8f), circle, font);
-
-            // HUD
-            var hud = UiRect("HUD", safe, Vector2.zero, Vector2.one);
-            var hudCtrl = hud.gameObject.AddComponent<HudController>();
-
-            var boltIcon = UiRect("BoltIcon", hud, new Vector2(0f, 1f), new Vector2(0f, 1f));
-            boltIcon.sizeDelta = new Vector2(64f, 64f);
-            boltIcon.anchoredPosition = new Vector2(70f, -60f);
-            var boltIconImg = boltIcon.gameObject.AddComponent<Image>();
-            boltIconImg.sprite = circle;
-            boltIconImg.color = new Color(1f, 0.8f, 0.2f);
-            boltIconImg.raycastTarget = false;
-
-            var boltText = UiRect("BoltCount", hud, new Vector2(0f, 1f), new Vector2(0f, 1f));
-            boltText.sizeDelta = new Vector2(300f, 80f);
-            boltText.pivot = new Vector2(0f, 0.5f);
-            boltText.anchoredPosition = new Vector2(115f, -60f);
-            var text = boltText.gameObject.AddComponent<Text>();
-            text.font = font;
-            text.fontSize = 56;
-            text.fontStyle = FontStyle.Bold;
-            text.alignment = TextAnchor.MiddleLeft;
-            text.color = Color.white;
-            text.text = "0";
-            text.raycastTarget = false;
-            var shadow = boltText.gameObject.AddComponent<Shadow>();
-            shadow.effectDistance = new Vector2(3f, -3f);
-
-            var hpIcons = new Image[3];
-            for (int i = 0; i < 3; i++)
-            {
-                var hp = UiRect("HP" + i, hud, new Vector2(0f, 1f), new Vector2(0f, 1f));
-                hp.sizeDelta = new Vector2(44f, 44f);
-                hp.anchoredPosition = new Vector2(60f + i * 54f, -135f);
-                hpIcons[i] = hp.gameObject.AddComponent<Image>();
-                hpIcons[i].sprite = circle;
-                hpIcons[i].raycastTarget = false;
-            }
-
-            var coreIcons = new Image[3];
-            for (int i = 0; i < 3; i++)
-            {
-                var c = UiRect("Core" + i, hud, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f));
-                c.sizeDelta = new Vector2(64f, 64f);
-                c.anchoredPosition = new Vector2((i - 1) * 84f, -60f);
-                coreIcons[i] = c.gameObject.AddComponent<Image>();
-                coreIcons[i].sprite = circle;
-                coreIcons[i].raycastTarget = false;
-            }
-
-            Set(hudCtrl, "boltText", text);
-            SetObjectArray(hudCtrl, "coreIcons", coreIcons);
-            SetObjectArray(hudCtrl, "hpIcons", hpIcons);
-
-            var es = new GameObject("EventSystem");
-            es.AddComponent<EventSystem>();
-            var module = es.AddComponent<InputSystemUIInputModule>();
-            module.AssignDefaultActions();
-        }
-
-        private static RectTransform UiRect(string name, Transform parent, Vector2 anchorMin, Vector2 anchorMax)
-        {
-            var go = new GameObject(name, typeof(RectTransform));
-            go.layer = LayerMask.NameToLayer("UI");
-            var rt = (RectTransform)go.transform;
-            rt.SetParent(parent, false);
-            rt.anchorMin = anchorMin;
-            rt.anchorMax = anchorMax;
-            rt.pivot = new Vector2(0.5f, 0.5f);
-            rt.offsetMin = Vector2.zero;
-            rt.offsetMax = Vector2.zero;
-            return rt;
-        }
-
-        private static void TransparentImage(RectTransform rt)
-        {
-            var img = rt.gameObject.AddComponent<Image>();
-            img.color = new Color(0f, 0f, 0f, 0f);
-            img.raycastTarget = true;
-        }
-
-        private static void UiButton(string name, Transform parent, ButtonAction action, string label, Vector2 fromBottomRight,
-            float size, Color color, Sprite sprite, Font font)
-        {
-            var rt = UiRect(name, parent, new Vector2(1f, 0f), new Vector2(1f, 0f));
-            rt.sizeDelta = new Vector2(size, size);
-            rt.anchoredPosition = fromBottomRight;
-            var img = rt.gameObject.AddComponent<Image>();
-            img.sprite = sprite;
-            img.color = color;
-            var button = rt.gameObject.AddComponent<TouchButton>();
-            button.Action = action;
-            EditorUtility.SetDirty(button);
-
-            var txt = UiRect("Label", rt, Vector2.zero, Vector2.one);
-            var t = txt.gameObject.AddComponent<Text>();
-            t.font = font;
-            t.text = label;
-            t.fontSize = Mathf.RoundToInt(size * 0.2f);
-            t.fontStyle = FontStyle.Bold;
-            t.alignment = TextAnchor.MiddleCenter;
-            t.color = Color.white;
-            t.raycastTarget = false;
         }
 
         // ------------------------------------------------------------------ scene helpers

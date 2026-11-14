@@ -40,6 +40,10 @@ namespace SuperBot.CameraSystem
         private Vector3 smoothedTarget;
         private Vector3 followVelocity;
         private float lastLookTime;
+        private Transform overrideView;
+
+        /// <summary>Temporarily frame a fixed view (e.g. shop preview). Pass null to return to orbit.</summary>
+        public void SetOverride(Transform view) => overrideView = view;
 
         public Transform Target
         {
@@ -72,6 +76,14 @@ namespace SuperBot.CameraSystem
         {
             if (target == null) return;
             float dt = Time.deltaTime;
+
+            if (overrideView != null)
+            {
+                float k = 1f - Mathf.Exp(-8f * Time.unscaledDeltaTime);
+                transform.SetPositionAndRotation(Vector3.Lerp(transform.position, overrideView.position, k),
+                    Quaternion.Slerp(transform.rotation, overrideView.rotation, k));
+                return;
+            }
 
             Vector2 look = MobileInputRouter.Instance != null ? MobileInputRouter.Instance.State.LookDelta : Vector2.zero;
             if (look.sqrMagnitude > 0.01f) lastLookTime = Time.time;

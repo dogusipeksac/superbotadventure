@@ -1,3 +1,4 @@
+using SuperBot.Audio;
 using SuperBot.Core;
 using SuperBot.Player;
 using SuperBot.Save;
@@ -49,6 +50,7 @@ namespace SuperBot.Collectibles
             GameEvents.RaiseGoldenCoreCollected(coreId);
             if (collectFx != null) PoolManager.SpawnStatic(collectFx, transform.position, Quaternion.identity);
             if (ServiceLocator.TryGet(out HapticManager h)) h.Heavy();
+            AudioService.Play(SfxId.Core);
             gameObject.SetActive(false);
         }
     }

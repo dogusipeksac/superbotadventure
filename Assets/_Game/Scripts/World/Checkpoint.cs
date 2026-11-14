@@ -1,3 +1,4 @@
+using SuperBot.Audio;
 using SuperBot.Core;
 using SuperBot.Player;
 using UnityEngine;
@@ -37,6 +38,7 @@ namespace SuperBot.World
             if (ServiceLocator.TryGet(out RespawnService respawn)) respawn.SetCheckpoint(this);
             GameEvents.RaiseCheckpointReached(checkpointId);
             if (ServiceLocator.TryGet(out HapticManager h)) h.Medium();
+            AudioService.Play(SfxId.Checkpoint);
         }
 
         public void ActivateSilently()

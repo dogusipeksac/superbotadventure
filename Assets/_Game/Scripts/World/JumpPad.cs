@@ -1,3 +1,4 @@
+using SuperBot.Audio;
 using SuperBot.Core;
 using SuperBot.Player;
 using UnityEngine;
@@ -33,6 +34,7 @@ namespace SuperBot.World
             motor.Launch(launchVelocity);
             squashStart = Time.time;
             if (ServiceLocator.TryGet(out HapticManager h)) h.Medium();
+            AudioService.Play(SfxId.JumpPad);
         }
 
         private void Update()

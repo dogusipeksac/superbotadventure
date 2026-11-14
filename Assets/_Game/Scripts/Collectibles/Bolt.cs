@@ -1,3 +1,4 @@
+using SuperBot.Audio;
 using SuperBot.Core;
 using SuperBot.Player;
 using SuperBot.Save;
@@ -96,6 +97,7 @@ namespace SuperBot.Collectibles
             }
             if (collectFx != null) PoolManager.SpawnStatic(collectFx, transform.position, Quaternion.identity);
             if (ServiceLocator.TryGet(out HapticManager h)) h.Light();
+            AudioService.Play(SfxId.Bolt);
             PoolManager.DespawnOrDisable(this);
         }
     }

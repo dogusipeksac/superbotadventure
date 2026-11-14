@@ -1,4 +1,5 @@
 using System.Collections;
+using SuperBot.Audio;
 using SuperBot.Core;
 using SuperBot.World;
 using UnityEngine;
@@ -42,6 +43,7 @@ namespace SuperBot.Player
             GameEvents.RaisePlayerHealthChanged(Hp, maxHp);
             Motor.Knockback(transform.position - source, 6f, 7f);
             Haptics()?.Medium();
+            AudioService.Play(SfxId.Hurt);
             if (Hp <= 0) Kill();
             else StartCoroutine(Blink());
         }
@@ -55,15 +57,25 @@ namespace SuperBot.Player
             GameEvents.RaisePlayerHealthChanged(Hp, maxHp);
             GameEvents.RaisePlayerDied();
             Haptics()?.Heavy();
-            // Phase 2 hook: offer IMonetizationService.ShowRewarded(RewardedPlacement.Revive, ...) here.
-            StartCoroutine(RespawnAfterDelay());
+            AudioService.Play(SfxId.Die);
+            if (ServiceLocator.TryGet(out IDeathHandler handler)) handler.HandlePlayerDeath();
+            else StartCoroutine(RespawnAfterDelay());
         }
+
+        /// <summary>Respawn at the active checkpoint (or default spawn).</summary>
+        public void RespawnAtCheckpoint()
+        {
+            if (ServiceLocator.TryGet(out RespawnService respawn)) respawn.Respawn(this);
+            else Revive(transform.position, transform.rotation);
+        }
+
+        /// <summary>Rewarded-ad revive: back on the last safe ground with full HP.</summary>
+        public void ReviveInPlace() => Revive(Motor.LastSafePosition + Vector3.up * 0.2f, transform.rotation);
 
         private IEnumerator RespawnAfterDelay()
         {
             yield return new WaitForSeconds(respawnDelay);
-            if (ServiceLocator.TryGet(out RespawnService respawn)) respawn.Respawn(this);
-            else Revive(transform.position, transform.rotation);
+            RespawnAtCheckpoint();
         }
 
         /// <summary>Called by RespawnService.</summary>

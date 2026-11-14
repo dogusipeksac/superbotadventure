@@ -1,3 +1,5 @@
+using SuperBot.Audio;
+using SuperBot.Data;
 using SuperBot.Monetization;
 using SuperBot.Save;
 using UnityEngine;
@@ -8,6 +10,9 @@ namespace SuperBot.Core
     [DefaultExecutionOrder(-1000)]
     public sealed class Bootstrapper : MonoBehaviour
     {
+        [SerializeField] private CosmeticDatabase cosmeticDatabase;
+        [SerializeField] private AudioLibrary audioLibrary;
+
         private static Bootstrapper instance;
 
         public static Bootstrapper Instance => instance;
@@ -34,15 +39,22 @@ namespace SuperBot.Core
             var save = new SaveService();
             save.Load();
             ServiceLocator.Register(save);
-            ServiceLocator.Register(new EconomyService(save));
+            var economy = new EconomyService(save);
+            ServiceLocator.Register(economy);
             ServiceLocator.Register(new HapticManager(save));
 
             IMonetizationService monetization = new MonetizationServiceStub(save);
             ServiceLocator.Register(monetization);
             monetization.Initialize(null);
+            ServiceLocator.Register(new CosmeticService(cosmeticDatabase, save, economy, monetization));
 
             if (GetComponent<SaveAutosaver>() == null) gameObject.AddComponent<SaveAutosaver>();
             if (GetComponent<PoolManager>() == null) gameObject.AddComponent<PoolManager>();
+            if (GetComponent<SceneLoader>() == null) gameObject.AddComponent<SceneLoader>();
+            if (GetComponent<PauseService>() == null) gameObject.AddComponent<PauseService>();
+            var audio = GetComponent<AudioService>();
+            if (audio == null) audio = gameObject.AddComponent<AudioService>();
+            audio.Init(audioLibrary);
         }
 
         private void OnDestroy()

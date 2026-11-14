@@ -1,3 +1,4 @@
+using SuperBot.Audio;
 using SuperBot.Collectibles;
 using SuperBot.Core;
 using UnityEngine;
@@ -41,6 +42,7 @@ namespace SuperBot.World
                 }
             }
             if (ServiceLocator.TryGet(out HapticManager h)) h.Light();
+            AudioService.Play(SfxId.CrateBreak);
             gameObject.SetActive(false);
         }
     }

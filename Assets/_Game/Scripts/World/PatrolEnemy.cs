@@ -1,3 +1,4 @@
+using SuperBot.Audio;
 using SuperBot.Collectibles;
 using SuperBot.Core;
 using SuperBot.Player;
@@ -196,6 +197,7 @@ namespace SuperBot.World
             public void Enter()
             {
                 e.DropLoot();
+                AudioService.Play(SfxId.EnemyDie);
                 if (ServiceLocator.TryGet(out HapticManager h)) h.Light();
                 e.gameObject.SetActive(false);
             }

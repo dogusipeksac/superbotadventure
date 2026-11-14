@@ -35,6 +35,8 @@ namespace SuperBot.Player
         public bool IsHovering { get; private set; }
         public int JumpCount => jumpCount;
         public bool InputEnabled { get; set; } = true;
+        /// <summary>Last position where the player stood on static Ground (used for ad revive).</summary>
+        public Vector3 LastSafePosition { get; private set; }
 
         private CharacterController controller;
         private Collider ownCollider;
@@ -69,6 +71,8 @@ namespace SuperBot.Player
             ownCollider = controller;
             if (config == null) config = ScriptableObject.CreateInstance<PlayerConfig>();
             if (cameraTransform == null && Camera.main != null) cameraTransform = Camera.main.transform;
+            groundLayer = LayerMask.NameToLayer("Ground");
+            LastSafePosition = transform.position;
         }
 
         private void Update()
@@ -190,6 +194,8 @@ namespace SuperBot.Player
                     GameEvents.RaisePlayerLanded(-preMoveVerticalVelocity);
                 lastGroundedTime = now;
                 airTime = 0f;
+                if (groundPlatform == null && lastGroundCollider != null && lastGroundCollider.gameObject.layer == groundLayer)
+                    LastSafePosition = transform.position;
                 jumpCount = 0;
                 doubleJumpUsed = false;
                 airDashUsed = false;
@@ -243,6 +249,7 @@ namespace SuperBot.Player
         }
 
         private MovingPlatform cachedPlatform;
+        private int groundLayer = -1;
 
         // ---- External API ----
 
@@ -283,6 +290,7 @@ namespace SuperBot.Player
             groundPlatform = null;
             dashEndTime = -10f;
             spinEndTime = -10f;
+            LastSafePosition = position;
             Physics.SyncTransforms();
         }
 
