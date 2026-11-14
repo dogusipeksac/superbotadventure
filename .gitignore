@@ -1,0 +1,37 @@
+# Unity
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+sysinfo.txt
+crashlytics-build.properties
+*.apk
+*.aab
+*.ipa
+*.unitypackage
+
+# IDE
+.vscode/
+.idea/
+.vs/
+*.csproj
+*.sln
+*.slnx
+*.suo
+*.user
+*.userprefs
+.DS_Store
+
+# Polyfork assets: lisans ham dosyaların yeniden dağıtımını yasaklıyor (repo public).
+# Modeller Tools/copy_polyfork_assets.sh ile yerel arşivden kopyalanır. .meta dosyaları takip edilir (GUID sabit kalsın).
+Assets/_Game/Art/**/*.glb
+Assets/_Game/Art/LICENSE_NOTES_polyfork.md
+Assets/_Game/Art/LICENSE_NOTES_polyfork.md.meta
